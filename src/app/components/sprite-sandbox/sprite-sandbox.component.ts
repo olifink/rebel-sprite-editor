@@ -8,7 +8,8 @@ import {
   effect,
   inject,
   signal,
-  computed
+  computed,
+  output
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -540,6 +541,8 @@ export type SandboxViewMode = 'collapsed' | 'standard' | 'maximized';
 export class SpriteSandboxComponent implements AfterViewInit, OnDestroy {
   spriteService = inject(SpriteService);
 
+  maximizedChange = output<boolean>();
+
   viewMode = signal<SandboxViewMode>('standard');
   isCollapsed = computed(() => this.viewMode() === 'collapsed');
   isMaximized = computed(() => this.viewMode() === 'maximized');
@@ -617,6 +620,7 @@ export class SpriteSandboxComponent implements AfterViewInit, OnDestroy {
 
   setViewMode(mode: SandboxViewMode) {
     this.viewMode.set(mode);
+    this.maximizedChange.emit(mode === 'maximized');
     if (mode !== 'collapsed') {
       setTimeout(() => {
         this.renderAnimFrame();

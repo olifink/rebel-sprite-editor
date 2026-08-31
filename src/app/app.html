@@ -15,8 +15,8 @@
         <app-pixel-editor></app-pixel-editor>
       </div>
 
-      <div class="sandbox-section">
-        <app-sprite-sandbox></app-sprite-sandbox>
+      <div class="sandbox-section" [class.maximized]="isSandboxMaximized()">
+        <app-sprite-sandbox (maximizedChange)="isSandboxMaximized.set($event)"></app-sprite-sandbox>
       </div>
     </div>
   </main>

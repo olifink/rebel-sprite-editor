@@ -31,6 +31,7 @@ export class App {
 
   isDraggingFile = signal<boolean>(false);
   isDarkMode = signal<boolean>(true);
+  isSandboxMaximized = signal<boolean>(false);
 
   toggleTheme() {
     this.isDarkMode.set(!this.isDarkMode());

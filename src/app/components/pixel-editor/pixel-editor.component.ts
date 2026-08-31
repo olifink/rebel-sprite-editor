@@ -246,7 +246,7 @@ import { PaletteBarComponent } from '../palette-bar/palette-bar.component';
 
       <!-- Editor Body: Interactive Canvas + Transform Tools -->
       <div class="editor-body">
-        <div class="canvas-viewport" [style.maxHeight.px]="520">
+        <div class="canvas-viewport">
           <div class="canvas-wrapper">
             <canvas
               #mainCanvas
@@ -656,6 +656,9 @@ import { PaletteBarComponent } from '../palette-bar/palette-bar.component';
       padding: 12px;
       border: 2px solid var(--sys-outline-variant);
       box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+      flex: 1;
+      min-height: 160px;
+      max-height: 55vh;
     }
 
     .canvas-wrapper {
