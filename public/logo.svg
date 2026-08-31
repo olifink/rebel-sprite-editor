@@ -1,30 +1,74 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00bcd4" />
-      <stop offset="100%" stop-color="#00838f" />
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1b212b" />
+      <stop offset="100%" stop-color="#0f141c" />
     </linearGradient>
+    <linearGradient id="topFaceGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4dd0e1" />
+      <stop offset="100%" stop-color="#00bcd4" />
+    </linearGradient>
+    <linearGradient id="leftFaceGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0097a7" />
+      <stop offset="100%" stop-color="#006064" />
+    </linearGradient>
+    <linearGradient id="rightFaceGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00838f" />
+      <stop offset="100%" stop-color="#004d40" />
+    </linearGradient>
+    <linearGradient id="neonGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#97f0ff" />
+      <stop offset="100%" stop-color="#00bcd4" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
   </defs>
-  <!-- Background Rounded Frame -->
-  <rect x="2" y="2" width="44" height="44" rx="10" fill="#1b212b" stroke="#00bcd4" stroke-width="2"/>
-  <!-- 4bpp Pixel Grid / Sprite Icon -->
-  <rect x="10" y="10" width="6" height="6" rx="1" fill="#00bcd4"/>
-  <rect x="18" y="10" width="6" height="6" rx="1" fill="#ff4081"/>
-  <rect x="26" y="10" width="6" height="6" rx="1" fill="#ffd740"/>
-  <rect x="34" y="10" width="6" height="6" rx="1" fill="#00e676"/>
 
-  <rect x="10" y="18" width="6" height="6" rx="1" fill="#ff4081"/>
-  <rect x="18" y="18" width="6" height="6" rx="1" fill="#00bcd4"/>
-  <rect x="26" y="18" width="6" height="6" rx="1" fill="#00bcd4"/>
-  <rect x="34" y="18" width="6" height="6" rx="1" fill="#ff4081"/>
+  <!-- Dark Background Rounded Tile -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
 
-  <rect x="10" y="26" width="6" height="6" rx="1" fill="#ffd740"/>
-  <rect x="18" y="26" width="6" height="6" rx="1" fill="#00bcd4"/>
-  <rect x="26" y="26" width="6" height="6" rx="1" fill="#00bcd4"/>
-  <rect x="34" y="26" width="6" height="6" rx="1" fill="#ffd740"/>
+  <!-- Outer AR Tracking Corner Brackets (view_in_ar style) -->
+  <g stroke="url(#neonGlow)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#glow)">
+    <!-- Top-Left Corner -->
+    <path d="M 104 176 L 104 128 Q 104 104 128 104 L 176 104" />
+    <!-- Top-Right Corner -->
+    <path d="M 336 104 L 384 104 Q 408 104 408 128 L 408 176" />
+    <!-- Bottom-Left Corner -->
+    <path d="M 104 336 L 104 384 Q 104 408 128 408 L 176 408" />
+    <!-- Bottom-Right Corner -->
+    <path d="M 336 408 L 384 408 Q 408 408 408 384 L 408 336" />
+  </g>
 
-  <rect x="10" y="34" width="6" height="6" rx="1" fill="#00e676"/>
-  <rect x="18" y="34" width="6" height="6" rx="1" fill="#ffd740"/>
-  <rect x="26" y="34" width="6" height="6" rx="1" fill="#ff4081"/>
-  <rect x="34" y="34" width="6" height="6" rx="1" fill="#00bcd4"/>
+  <!-- Central Isometric 3D Sprite Cube -->
+  <g transform="translate(0, 0)">
+    <!-- Top Isometric Face -->
+    <polygon points="256,150 352,205 256,260 160,205" fill="url(#topFaceGrad)" stroke="#1b212b" stroke-width="4" />
+    <!-- Top Face 2x2 Pixel Grid Details -->
+    <polygon points="256,150 304,177.5 256,205 208,177.5" fill="#80deea" opacity="0.6" />
+    <polygon points="304,177.5 352,205 304,232.5 256,205" fill="#4dd0e1" opacity="0.4" />
+    <polygon points="208,177.5 256,205 208,232.5 160,205" fill="#00e5ff" opacity="0.5" />
+    <polygon points="256,205 304,232.5 256,260 208,232.5" fill="#00bcd4" opacity="0.7" />
+
+    <!-- Left Isometric Face -->
+    <polygon points="160,205 256,260 256,370 160,315" fill="url(#leftFaceGrad)" stroke="#1b212b" stroke-width="4" />
+    <!-- Left Face 2x2 Pixel Details -->
+    <polygon points="160,205 208,232.5 208,287.5 160,260" fill="#00acc1" opacity="0.4" />
+    <polygon points="208,232.5 256,260 256,315 208,287.5" fill="#00838f" opacity="0.5" />
+    <polygon points="160,260 208,287.5 208,342.5 160,315" fill="#006064" opacity="0.6" />
+    <polygon points="208,287.5 256,315 256,370 208,342.5" fill="#004d40" opacity="0.7" />
+
+    <!-- Right Isometric Face -->
+    <polygon points="256,260 352,205 352,315 256,370" fill="url(#rightFaceGrad)" stroke="#1b212b" stroke-width="4" />
+    <!-- Right Face 2x2 Pixel Details -->
+    <polygon points="256,260 304,232.5 304,287.5 256,315" fill="#0097a7" opacity="0.5" />
+    <polygon points="304,232.5 352,205 352,260 304,287.5" fill="#00838f" opacity="0.4" />
+    <polygon points="256,315 304,287.5 304,342.5 256,370" fill="#004d40" opacity="0.7" />
+    <polygon points="304,287.5 352,260 352,315 304,342.5" fill="#00363a" opacity="0.6" />
+
+    <!-- Sharp Center / Edge Outlines -->
+    <polyline points="160,205 256,260 352,205" fill="none" stroke="#97f0ff" stroke-width="3" opacity="0.8" />
+    <line x1="256" y1="260" x2="256" y2="370" stroke="#97f0ff" stroke-width="3" opacity="0.8" />
+  </g>
 </svg>
