@@ -102,6 +102,26 @@ describe('SpriteService', () => {
     expect(service.sprites().length).toBe(initialCount + 1);
   });
 
+  it('should support creating and resizing custom non-square sprites in 8x8 cell increments (e.g. 3x2 = 24x16)', () => {
+    // Add custom 3x2 cells (24x16) sprite
+    const customId = service.addSprite(24, 16, 'custom_hero_3x2');
+    const sprite = service.sprites()[customId];
+    expect(sprite.width).toBe(24);
+    expect(sprite.height).toBe(16);
+    expect(sprite.pixelData.length).toBe((24 / 2) * 16); // 192 bytes
+
+    // Draw on custom bounds
+    service.setPixel(customId, 23, 15, 11);
+    expect(service.getPixel(customId, 23, 15)).toBe(11);
+
+    // Resize to 4x1 cells (32x8)
+    service.resizeSprite(customId, 32, 8);
+    const resized = service.sprites()[customId];
+    expect(resized.width).toBe(32);
+    expect(resized.height).toBe(8);
+    expect(resized.pixelData.length).toBe((32 / 2) * 8); // 128 bytes
+  });
+
   it('should correctly export and import binary .SPR files matching SPRITE-BANK.md specification', async () => {
     // Set custom pixel data
     service.setPixel(0, 1, 1, 12);

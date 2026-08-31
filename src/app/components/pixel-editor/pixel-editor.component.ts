@@ -52,23 +52,29 @@ import { PaletteBarComponent } from '../palette-bar/palette-bar.component';
             </span>
           </div>
 
-          <!-- Dimension Selector Dropdown -->
+          <!-- Dimension / Cell Grid Selector (8x8 cells) -->
           <div class="dim-picker">
-            <label class="dim-label">SIZE:</label>
+            <span class="dim-label">GRID:</span>
             <select
-              [ngModel]="sprite.width + 'x' + sprite.height"
-              (ngModelChange)="onDimensionChange($event)"
+              [ngModel]="sprite.width / 8"
+              (ngModelChange)="onWidthCellsChange($event)"
               class="dim-select"
+              matTooltip="Sprite Width in 8x8 Character Cells"
             >
-              <option value="8x8">8 x 8 (1 tile)</option>
-              <option value="16x8">16 x 8 (2x1)</option>
-              <option value="8x16">8 x 16 (1x2)</option>
-              <option value="16x16">16 x 16 (2x2)</option>
-              <option value="24x24">24 x 24 (3x3)</option>
-              <option value="32x32">32 x 32 (4x4)</option>
-              <option value="48x48">48 x 48 (6x6)</option>
-              <option value="64x64">64 x 64 (8x8)</option>
+              <option *ngFor="let c of cellOptions" [value]="c">{{ c }}c ({{ c * 8 }}w)</option>
             </select>
+            <span class="dim-times">✕</span>
+            <select
+              [ngModel]="sprite.height / 8"
+              (ngModelChange)="onHeightCellsChange($event)"
+              class="dim-select"
+              matTooltip="Sprite Height in 8x8 Character Cells"
+            >
+              <option *ngFor="let c of cellOptions" [value]="c">{{ c }}c ({{ c * 8 }}h)</option>
+            </select>
+            <span class="dim-summary-badge">
+              {{ sprite.width }}×{{ sprite.height }} px
+            </span>
           </div>
 
           <!-- Flip Attribute Flags Checkboxes -->
@@ -465,7 +471,7 @@ import { PaletteBarComponent } from '../palette-bar/palette-bar.component';
     .dim-picker {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
       background: var(--sys-surface-container-high);
       padding: 3px 8px;
       border-radius: 8px;
@@ -474,8 +480,15 @@ import { PaletteBarComponent } from '../palette-bar/palette-bar.component';
 
     .dim-label {
       font-size: 0.65rem;
-      font-weight: 700;
+      font-weight: 800;
       color: var(--sys-primary);
+      letter-spacing: 0.5px;
+    }
+
+    .dim-times {
+      font-size: 0.7rem;
+      color: var(--sys-on-surface-variant);
+      font-weight: 700;
     }
 
     .dim-select {
@@ -486,6 +499,24 @@ import { PaletteBarComponent } from '../palette-bar/palette-bar.component';
       font-size: 0.75rem;
       font-weight: 600;
       outline: none;
+      cursor: pointer;
+
+      option {
+        background: var(--sys-surface-container-highest);
+        color: var(--sys-on-surface);
+      }
+    }
+
+    .dim-summary-badge {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--sys-primary);
+      background: var(--sys-surface-container-highest);
+      padding: 1px 6px;
+      border-radius: 6px;
+      border: 1px solid var(--sys-outline-variant);
+      margin-left: 2px;
     }
 
     .flags-picker {
@@ -877,6 +908,26 @@ export class PixelEditorComponent implements AfterViewInit {
     const s = this.spriteService.selectedSprite();
     if (s) {
       this.spriteService.setSpriteName(s.id, name);
+    }
+  }
+
+  cellOptions = [1, 2, 3, 4, 5, 6, 7, 8];
+
+  onWidthCellsChange(cells: number | string) {
+    const s = this.spriteService.selectedSprite();
+    if (!s) return;
+    const wCells = typeof cells === 'string' ? parseInt(cells, 10) : cells;
+    if (!isNaN(wCells) && wCells >= 1 && wCells <= 8) {
+      this.spriteService.resizeSprite(s.id, wCells * 8, s.height);
+    }
+  }
+
+  onHeightCellsChange(cells: number | string) {
+    const s = this.spriteService.selectedSprite();
+    if (!s) return;
+    const hCells = typeof cells === 'string' ? parseInt(cells, 10) : cells;
+    if (!isNaN(hCells) && hCells >= 1 && hCells <= 8) {
+      this.spriteService.resizeSprite(s.id, s.width, hCells * 8);
     }
   }
 

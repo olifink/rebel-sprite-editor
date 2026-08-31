@@ -41,19 +41,31 @@ import { SpriteEntry } from '../../models/sprite.model';
           <mat-menu #addMenu="matMenu" class="m3-menu">
             <button mat-menu-item (click)="addNewSprite(8, 8, 'tile_8x8')">
               <span class="material-symbols-outlined">crop_square</span>
-              <span>8 x 8 (Single Tile - 32 B)</span>
+              <span>8 x 8 (1x1 cell - 32 B)</span>
             </button>
             <button mat-menu-item (click)="addNewSprite(16, 16, 'sprite_16x16')">
               <span class="material-symbols-outlined">grid_view</span>
-              <span>16 x 16 (Standard Sprite - 128 B)</span>
+              <span>16 x 16 (2x2 cells - 128 B)</span>
+            </button>
+            <button mat-menu-item (click)="addNewSprite(24, 16, 'sprite_24x16')">
+              <span class="material-symbols-outlined">crop_landscape</span>
+              <span>24 x 16 (3x2 cells - 192 B)</span>
             </button>
             <button mat-menu-item (click)="addNewSprite(24, 24, 'sprite_24x24')">
               <span class="material-symbols-outlined">grid_4x4</span>
-              <span>24 x 24 (Medium Sprite - 288 B)</span>
+              <span>24 x 24 (3x3 cells - 288 B)</span>
+            </button>
+            <button mat-menu-item (click)="addNewSprite(16, 32, 'sprite_16x32')">
+              <span class="material-symbols-outlined">crop_portrait</span>
+              <span>16 x 32 (2x4 cells - 256 B)</span>
             </button>
             <button mat-menu-item (click)="addNewSprite(32, 32, 'sprite_32x32')">
               <span class="material-symbols-outlined">window</span>
-              <span>32 x 32 (Large Boss / Object - 512 B)</span>
+              <span>32 x 32 (4x4 cells - 512 B)</span>
+            </button>
+            <button mat-menu-item (click)="openCustomSizeModal()">
+              <span class="material-symbols-outlined">aspect_ratio</span>
+              <span>Custom Dimensions (NxM cells)...</span>
             </button>
           </mat-menu>
         </div>
@@ -181,7 +193,7 @@ import { SpriteEntry } from '../../models/sprite.model';
 
           <div class="card-bottom">
             <span class="name-label">{{ sprite.name }}</span>
-            <span class="dim-badge">{{ sprite.width }}x{{ sprite.height }}</span>
+            <span class="dim-badge">{{ sprite.width / 8 }}x{{ sprite.height / 8 }}c</span>
           </div>
 
           <!-- Quick card action overlay -->
@@ -207,6 +219,80 @@ import { SpriteEntry } from '../../models/sprite.model';
         <div *ngIf="filteredSprites().length === 0" class="no-results">
           <span class="material-symbols-outlined empty-icon">search_off</span>
           <span>No sprites match your filter</span>
+        </div>
+      </div>
+
+      <!-- Custom Dimensions Creator Modal -->
+      <div *ngIf="showCustomModal()" class="custom-modal-backdrop" (click)="showCustomModal.set(false)">
+        <div class="custom-modal-card" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div class="modal-title-group">
+              <span class="material-symbols-outlined modal-icon">aspect_ratio</span>
+              <h3 class="modal-title">Custom Sprite Dimensions</h3>
+            </div>
+            <button class="close-modal-btn" (click)="showCustomModal.set(false)">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <p class="modal-description">
+            Specify width and height in 8x8 character cell units (1 to 8 cells each).
+          </p>
+
+          <div class="modal-inputs-grid">
+            <div class="modal-field">
+              <label class="field-label">Width (8x8 cells):</label>
+              <div class="cell-spinner">
+                <button class="spin-btn" [disabled]="customWCells() <= 1" (click)="customWCells.set(customWCells() - 1)">-</button>
+                <span class="spin-val">{{ customWCells() }} cells ({{ customWCells() * 8 }}px)</span>
+                <button class="spin-btn" [disabled]="customWCells() >= 8" (click)="customWCells.set(customWCells() + 1)">+</button>
+              </div>
+            </div>
+
+            <div class="modal-field">
+              <label class="field-label">Height (8x8 cells):</label>
+              <div class="cell-spinner">
+                <button class="spin-btn" [disabled]="customHCells() <= 1" (click)="customHCells.set(customHCells() - 1)">-</button>
+                <span class="spin-val">{{ customHCells() }} cells ({{ customHCells() * 8 }}px)</span>
+                <button class="spin-btn" [disabled]="customHCells() >= 8" (click)="customHCells.set(customHCells() + 1)">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Wireframe Cell Grid Preview -->
+          <div class="modal-preview-box">
+            <div
+              class="cells-preview-grid"
+              [style.gridTemplateColumns]="'repeat(' + customWCells() + ', 22px)'"
+              [style.gridTemplateRows]="'repeat(' + customHCells() + ', 22px)'"
+            >
+              <div *ngFor="let i of getCellArray(customWCells() * customHCells())" class="cell-preview-block"></div>
+            </div>
+            <div class="preview-meta">
+              <span class="preview-tag">{{ customWCells() }}✕{{ customHCells() }} cells</span>
+              <span class="preview-dim">{{ customWCells() * 8 }} ✕ {{ customHCells() * 8 }} px</span>
+              <span class="preview-bytes">{{ (customWCells() * 8 / 2) * (customHCells() * 8) }} bytes (4bpp)</span>
+            </div>
+          </div>
+
+          <div class="modal-field">
+            <label class="field-label">Sprite Name:</label>
+            <input
+              type="text"
+              class="modal-text-input"
+              [ngModel]="customName()"
+              (ngModelChange)="customName.set($event)"
+              placeholder="e.g. sprite_3x2"
+            />
+          </div>
+
+          <div class="modal-actions">
+            <button class="modal-cancel-btn" (click)="showCustomModal.set(false)">Cancel</button>
+            <button class="modal-create-btn" (click)="createCustomSprite()">
+              <span class="material-symbols-outlined">add</span>
+              <span>Create Sprite</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -579,6 +665,250 @@ import { SpriteEntry } from '../../models/sprite.model';
         opacity: 0.5;
       }
     }
+
+    /* Custom Dimensions Modal Overlay */
+    .custom-modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 12px;
+    }
+
+    .custom-modal-card {
+      background: var(--sys-surface-container-high);
+      border: 1.5px solid var(--sys-primary);
+      border-radius: 16px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75);
+      padding: 16px;
+      width: 100%;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-icon {
+      color: var(--sys-primary);
+      font-size: 22px;
+    }
+
+    .modal-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin: 0;
+      color: var(--sys-on-surface);
+    }
+
+    .close-modal-btn {
+      background: transparent;
+      border: none;
+      color: var(--sys-on-surface-variant);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 2px;
+      border-radius: 4px;
+
+      &:hover {
+        background: var(--sys-surface-container-highest);
+        color: var(--sys-on-surface);
+      }
+    }
+
+    .modal-description {
+      font-size: 0.72rem;
+      color: var(--sys-on-surface-variant);
+      margin: 0;
+      line-height: 1.3;
+    }
+
+    .modal-inputs-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .modal-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .field-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--sys-on-surface);
+    }
+
+    .cell-spinner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--sys-surface-container);
+      border: 1px solid var(--sys-outline-variant);
+      border-radius: 8px;
+      padding: 3px 6px;
+    }
+
+    .spin-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      border: 1px solid var(--sys-outline-variant);
+      background: var(--sys-surface-container-highest);
+      color: var(--sys-on-surface);
+      font-size: 1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover:not(:disabled) {
+        background: var(--sys-primary);
+        color: var(--sys-on-primary);
+        border-color: var(--sys-primary);
+      }
+
+      &:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+    }
+
+    .spin-val {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--sys-primary);
+    }
+
+    .modal-preview-box {
+      background: var(--sys-surface-container);
+      border: 1px dashed var(--sys-outline-variant);
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      justify-content: center;
+    }
+
+    .cells-preview-grid {
+      display: grid;
+      gap: 2px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 4px;
+      border-radius: 6px;
+    }
+
+    .cell-preview-block {
+      background: var(--sys-primary);
+      opacity: 0.75;
+      border-radius: 2px;
+    }
+
+    .preview-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .preview-tag {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: var(--sys-primary);
+    }
+
+    .preview-dim {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--sys-on-surface);
+    }
+
+    .preview-bytes {
+      font-size: 0.68rem;
+      color: var(--sys-on-surface-variant);
+    }
+
+    .modal-text-input {
+      background: var(--sys-surface-container);
+      border: 1px solid var(--sys-outline-variant);
+      border-radius: 8px;
+      padding: 6px 10px;
+      color: var(--sys-on-surface);
+      font-family: 'Fira Code', monospace;
+      font-size: 0.8rem;
+      outline: none;
+
+      &:focus {
+        border-color: var(--sys-primary);
+      }
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .modal-cancel-btn {
+      background: transparent;
+      border: 1px solid var(--sys-outline-variant);
+      color: var(--sys-on-surface);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+
+      &:hover {
+        background: var(--sys-surface-container-highest);
+      }
+    }
+
+    .modal-create-btn {
+      background: var(--sys-primary);
+      border: 1px solid var(--sys-primary);
+      color: var(--sys-on-primary);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      .material-symbols-outlined {
+        font-size: 16px;
+      }
+
+      &:hover {
+        filter: brightness(1.1);
+      }
+    }
   `]
 })
 export class SpriteListComponent implements AfterViewInit {
@@ -586,6 +916,12 @@ export class SpriteListComponent implements AfterViewInit {
 
   searchQuery = signal<string>('');
   activeCategory = signal<'all' | 'sprites' | 'tiles' | 'non-empty'>('all');
+
+  // Custom dimensions modal state
+  showCustomModal = signal<boolean>(false);
+  customWCells = signal<number>(3);
+  customHCells = signal<number>(2);
+  customName = signal<string>('sprite_3x2');
 
   @ViewChildren('spriteCanvas') spriteCanvases!: QueryList<ElementRef<HTMLCanvasElement>>;
 
@@ -625,6 +961,26 @@ export class SpriteListComponent implements AfterViewInit {
 
   addNewSprite(width: number, height: number, name: string) {
     this.spriteService.addSprite(width, height, name);
+  }
+
+  openCustomSizeModal() {
+    const total = this.spriteService.totalSprites();
+    this.customWCells.set(3);
+    this.customHCells.set(2);
+    this.customName.set(`sprite_3x2_#${total}`);
+    this.showCustomModal.set(true);
+  }
+
+  createCustomSprite() {
+    const w = this.customWCells() * 8;
+    const h = this.customHCells() * 8;
+    const name = this.customName().trim() || `sprite_${this.customWCells()}x${this.customHCells()}`;
+    this.spriteService.addSprite(w, h, name);
+    this.showCustomModal.set(false);
+  }
+
+  getCellArray(count: number): number[] {
+    return Array.from({ length: count }, (_, i) => i);
   }
 
   nudgeVisible(direction: 'up' | 'down' | 'left' | 'right') {
