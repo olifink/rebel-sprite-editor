@@ -144,6 +144,30 @@ html, body {
   }
 }
 
+/* Stroked / Outlined Button High Contrast Styling */
+.dark-theme, body:not(.light-theme) {
+  .mat-mdc-outlined-button:not(:disabled) {
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.28) !important;
+
+    .material-symbols-outlined {
+      color: #ffffff !important;
+    }
+
+    &:hover {
+      background: var(--sys-surface-container-highest) !important;
+      border-color: var(--sys-primary) !important;
+    }
+  }
+}
+
+body.light-theme {
+  .mat-mdc-outlined-button:not(:disabled) {
+    color: var(--sys-on-surface) !important;
+    border-color: var(--sys-outline) !important;
+  }
+}
+
 /* Material 3 Card style */
 .m3-card {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);

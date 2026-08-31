@@ -232,6 +232,7 @@ import { getRebelRoguePreset, getRetroPlatformerPreset, getUiTilesetPreset } fro
       letter-spacing: 1px;
       margin: 0;
       line-height: 1.1;
+      color: #ffffff;
     }
 
     .accent-text {
@@ -301,9 +302,69 @@ import { getRebelRoguePreset, getRetroPlatformerPreset, getUiTilesetPreset } fro
       margin: 0 4px;
     }
 
-    .m3-button-primary, .m3-button-secondary, .m3-button-accent {
+    .m3-button-primary {
       border-radius: 20px !important;
       font-weight: 600 !important;
+    }
+
+    .m3-button-secondary {
+      border-radius: 20px !important;
+      font-weight: 600 !important;
+      color: #ffffff !important;
+      border-color: var(--sys-outline, #899294) !important;
+      background: var(--sys-surface-container-high) !important;
+
+      .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+
+      &:hover {
+        background: var(--sys-surface-container-highest) !important;
+        border-color: var(--sys-primary) !important;
+      }
+    }
+
+    .m3-button-accent {
+      border-radius: 20px !important;
+      font-weight: 600 !important;
+      color: #ffffff !important;
+      border-color: var(--sys-primary) !important;
+      background: var(--sys-surface-container-high) !important;
+
+      .material-symbols-outlined {
+        color: var(--sys-primary) !important;
+      }
+
+      &:hover {
+        background: var(--sys-primary-container) !important;
+        color: #ffffff !important;
+      }
+    }
+
+    :host-context(body.light-theme) {
+      .app-title {
+        color: #171c1e;
+      }
+
+      .m3-button-secondary {
+        color: #171c1e !important;
+        border-color: var(--sys-outline) !important;
+        background: var(--sys-surface-container-high) !important;
+
+        .material-symbols-outlined {
+          color: #171c1e !important;
+        }
+      }
+
+      .m3-button-accent {
+        color: #006875 !important;
+        border-color: var(--sys-primary) !important;
+        background: var(--sys-surface-container-high) !important;
+
+        .material-symbols-outlined {
+          color: #006875 !important;
+        }
+      }
     }
 
     .status-chip {
