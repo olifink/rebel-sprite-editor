@@ -217,7 +217,7 @@ export type SandboxViewMode = 'collapsed' | 'standard' | 'maximized';
                 </div>
 
                 <span class="stage-hint">
-                  Click/drag on stage to place active sprite #{{ spriteService.selectedSpriteIndex() }}
+                  Left-click/drag to stamp (8x8 snap) • Right-click to erase • Sprite #{{ spriteService.selectedSpriteIndex() }} ({{ spriteService.selectedSprite()?.width }}x{{ spriteService.selectedSprite()?.height }})
                 </span>
               </div>
 
@@ -229,7 +229,8 @@ export type SandboxViewMode = 'collapsed' | 'standard' | 'maximized';
                   (mousedown)="onStageMouseDown($event)"
                   (mousemove)="onStageMouseMove($event)"
                   (mouseup)="isStageDrawing = false"
-                  (mouseleave)="isStageDrawing = false"
+                  (mouseleave)="onStageMouseLeave()"
+                  (contextmenu)="$event.preventDefault()"
                 ></canvas>
               </div>
             </div>
@@ -565,12 +566,13 @@ export class SpriteSandboxComponent implements AfterViewInit, OnDestroy {
   ];
   selectedBg = signal<SandboxBg>(this.bgList[0]);
 
-  // Stage state
+  // Stage state (8x8 pixel tile grid basis)
   stageScale = signal<number>(3);
-  stageGridCols = 24;
-  stageGridRows = 12;
+  stageGridCols = 48;
+  stageGridRows = 24;
   stageGrid: number[][] = []; // Stores spriteId placed on (row, col)
   isStageDrawing = false;
+  stageHoverPos: { row: number; col: number } | null = null;
 
   @ViewChild('animCanvas') animCanvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('stageCanvas') stageCanvasRef!: ElementRef<HTMLCanvasElement>;
@@ -769,10 +771,17 @@ export class SpriteSandboxComponent implements AfterViewInit, OnDestroy {
   }
 
   fillStageWithCurrent() {
-    const active = this.spriteService.selectedSpriteIndex();
-    for (let r = 0; r < this.stageGridRows; r++) {
-      for (let c = 0; c < this.stageGridCols; c++) {
-        this.stageGrid[r][c] = active;
+    const activeId = this.spriteService.selectedSpriteIndex();
+    const sprite = this.spriteService.selectedSprite();
+    if (!sprite) return;
+
+    this.initStageGrid();
+    const wCells = Math.max(1, Math.floor(sprite.width / 8));
+    const hCells = Math.max(1, Math.floor(sprite.height / 8));
+
+    for (let r = 0; r < this.stageGridRows; r += hCells) {
+      for (let c = 0; c < this.stageGridCols; c += wCells) {
+        this.stageGrid[r][c] = activeId;
       }
     }
     this.renderStage();
@@ -780,27 +789,101 @@ export class SpriteSandboxComponent implements AfterViewInit, OnDestroy {
 
   onStageMouseDown(e: MouseEvent) {
     this.isStageDrawing = true;
-    this.stampStage(e);
+    if (e.button === 2) {
+      this.eraseStage(e);
+    } else {
+      this.stampStage(e);
+    }
   }
 
   onStageMouseMove(e: MouseEvent) {
+    this.updateStageHover(e);
     if (!this.isStageDrawing) return;
-    this.stampStage(e);
+    if (e.buttons === 2) {
+      this.eraseStage(e);
+    } else {
+      this.stampStage(e);
+    }
+  }
+
+  onStageMouseLeave() {
+    this.isStageDrawing = false;
+    this.stageHoverPos = null;
+    this.renderStage();
+  }
+
+  private updateStageHover(e: MouseEvent) {
+    if (!this.stageCanvasRef) return;
+    const canvas = this.stageCanvasRef.nativeElement;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const canvasX = (e.clientX - rect.left) * scaleX;
+    const canvasY = (e.clientY - rect.top) * scaleY;
+
+    const cellPx = 8 * this.stageScale();
+    const col = Math.floor(canvasX / cellPx);
+    const row = Math.floor(canvasY / cellPx);
+
+    if (row >= 0 && row < this.stageGridRows && col >= 0 && col < this.stageGridCols) {
+      this.stageHoverPos = { row, col };
+      this.renderStage();
+    } else if (this.stageHoverPos) {
+      this.stageHoverPos = null;
+      this.renderStage();
+    }
   }
 
   private stampStage(e: MouseEvent) {
     if (!this.stageCanvasRef) return;
     const canvas = this.stageCanvasRef.nativeElement;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const canvasX = (e.clientX - rect.left) * scaleX;
+    const canvasY = (e.clientY - rect.top) * scaleY;
 
-    const cellPx = 16 * this.stageScale();
-    const col = Math.floor(x / cellPx);
-    const row = Math.floor(y / cellPx);
+    const cellPx = 8 * this.stageScale();
+    const col = Math.floor(canvasX / cellPx);
+    const row = Math.floor(canvasY / cellPx);
+
+    const activeId = this.spriteService.selectedSpriteIndex();
+    const sprite = this.spriteService.sprites()[activeId];
+    if (!sprite) return;
 
     if (row >= 0 && row < this.stageGridRows && col >= 0 && col < this.stageGridCols) {
-      this.stageGrid[row][col] = this.spriteService.selectedSpriteIndex();
+      const wCells = Math.max(1, Math.floor(sprite.width / 8));
+      const hCells = Math.max(1, Math.floor(sprite.height / 8));
+
+      // Clear any cell under the new placement
+      for (let dr = 0; dr < hCells; dr++) {
+        for (let dc = 0; dc < wCells; dc++) {
+          if (row + dr < this.stageGridRows && col + dc < this.stageGridCols) {
+            this.stageGrid[row + dr][col + dc] = -1;
+          }
+        }
+      }
+
+      this.stageGrid[row][col] = activeId;
+      this.renderStage();
+    }
+  }
+
+  private eraseStage(e: MouseEvent) {
+    if (!this.stageCanvasRef) return;
+    const canvas = this.stageCanvasRef.nativeElement;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const canvasX = (e.clientX - rect.left) * scaleX;
+    const canvasY = (e.clientY - rect.top) * scaleY;
+
+    const cellPx = 8 * this.stageScale();
+    const col = Math.floor(canvasX / cellPx);
+    const row = Math.floor(canvasY / cellPx);
+
+    if (row >= 0 && row < this.stageGridRows && col >= 0 && col < this.stageGridCols) {
+      this.stageGrid[row][col] = -1;
       this.renderStage();
     }
   }
@@ -812,7 +895,7 @@ export class SpriteSandboxComponent implements AfterViewInit, OnDestroy {
     if (!ctx) return;
 
     const scale = this.stageScale();
-    const cellPx = 16 * scale;
+    const cellPx = 8 * scale;
     canvas.width = this.stageGridCols * cellPx;
     canvas.height = this.stageGridRows * cellPx;
 
@@ -820,8 +903,8 @@ export class SpriteSandboxComponent implements AfterViewInit, OnDestroy {
     ctx.fillStyle = '#0e131b';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Subtle grid lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    // 8x8 Tile Grid Lines (subtle)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
     ctx.lineWidth = 1;
     for (let c = 0; c <= this.stageGridCols; c++) {
       ctx.beginPath();
@@ -830,6 +913,21 @@ export class SpriteSandboxComponent implements AfterViewInit, OnDestroy {
       ctx.stroke();
     }
     for (let r = 0; r <= this.stageGridRows; r++) {
+      ctx.beginPath();
+      ctx.moveTo(0, r * cellPx);
+      ctx.lineTo(canvas.width, r * cellPx);
+      ctx.stroke();
+    }
+
+    // 16x16 Major Grid Lines (distinct)
+    ctx.strokeStyle = 'rgba(0, 188, 212, 0.08)';
+    for (let c = 0; c <= this.stageGridCols; c += 2) {
+      ctx.beginPath();
+      ctx.moveTo(c * cellPx, 0);
+      ctx.lineTo(c * cellPx, canvas.height);
+      ctx.stroke();
+    }
+    for (let r = 0; r <= this.stageGridRows; r += 2) {
       ctx.beginPath();
       ctx.moveTo(0, r * cellPx);
       ctx.lineTo(canvas.width, r * cellPx);
@@ -860,6 +958,19 @@ export class SpriteSandboxComponent implements AfterViewInit, OnDestroy {
             }
           }
         }
+      }
+    }
+
+    // Draw active hover preview box
+    if (this.stageHoverPos) {
+      const { row, col } = this.stageHoverPos;
+      const activeSprite = this.spriteService.selectedSprite();
+      if (activeSprite) {
+        const wCells = Math.max(1, Math.floor(activeSprite.width / 8));
+        const hCells = Math.max(1, Math.floor(activeSprite.height / 8));
+        ctx.strokeStyle = 'rgba(0, 188, 212, 0.8)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(col * cellPx + 0.5, row * cellPx + 0.5, wCells * cellPx - 1, hCells * cellPx - 1);
       }
     }
   }
