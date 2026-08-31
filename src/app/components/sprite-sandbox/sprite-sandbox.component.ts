@@ -1,4 +1,15 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  ViewChild,
+  AfterViewInit,
+  OnDestroy,
+  HostListener,
+  effect,
+  inject,
+  signal,
+  computed
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -14,6 +25,8 @@ interface SandboxBg {
   isCheck: boolean;
 }
 
+export type SandboxViewMode = 'collapsed' | 'standard' | 'maximized';
+
 @Component({
   selector: 'app-sprite-sandbox',
   standalone: true,
@@ -27,40 +40,67 @@ interface SandboxBg {
     MatTabsModule
   ],
   template: `
-    <div class="sandbox-container m3-card" [class.collapsed]="isCollapsed()">
-      <div class="sandbox-header" (click)="toggleCollapse()">
+    <div
+      class="sandbox-container m3-card"
+      [class.collapsed]="isCollapsed()"
+      [class.maximized]="isMaximized()"
+    >
+      <!-- Header bar -->
+      <div class="sandbox-header" (click)="onHeaderClick()">
         <div class="header-title-group">
           <span class="material-symbols-outlined header-icon">sports_esports</span>
           <h2 class="section-title">Live Animation & Scene Sandbox</h2>
+          <span class="view-mode-badge" *ngIf="isMaximized()">Maximized</span>
         </div>
 
         <div class="header-actions" (click)="$event.stopPropagation()">
+          <!-- Export PNG -->
           <button
             *ngIf="!isCollapsed()"
             mat-stroked-button
             class="export-img-btn"
             (click)="downloadActiveViewImage()"
-            matTooltip="Export sandbox view to PNG"
+            matTooltip="Export current sandbox canvas to PNG"
           >
             <span class="material-symbols-outlined">image</span>
             <span>Export PNG</span>
           </button>
 
+          <!-- Maximize / Restore Button -->
+          <button
+            *ngIf="!isCollapsed()"
+            mat-icon-button
+            class="mode-action-btn"
+            (click)="toggleMaximize()"
+            [matTooltip]="isMaximized() ? 'Restore standard view (Esc)' : 'Maximize Sandbox view'"
+          >
+            <span class="material-symbols-outlined">
+              {{ isMaximized() ? 'close_fullscreen' : 'open_in_full' }}
+            </span>
+          </button>
+
+          <!-- Collapse / Expand Button -->
           <button
             mat-icon-button
+            class="mode-action-btn"
             (click)="toggleCollapse()"
             [matTooltip]="isCollapsed() ? 'Expand Sandbox' : 'Collapse Sandbox'"
           >
             <span class="material-symbols-outlined">
-              {{ isCollapsed() ? 'expand_more' : 'expand_less' }}
+              {{ isCollapsed() ? 'expand_less' : 'expand_more' }}
             </span>
           </button>
         </div>
       </div>
 
+      <!-- Sandbox Body Content -->
       <div class="sandbox-body" *ngIf="!isCollapsed()">
         <!-- Sandbox Mode Tabs -->
-        <mat-tab-group class="sandbox-tabs" [selectedIndex]="activeTab()" (selectedIndexChange)="activeTab.set($event)">
+        <mat-tab-group
+          class="sandbox-tabs"
+          [selectedIndex]="activeTab()"
+          (selectedIndexChange)="onTabChange($event)"
+        >
           <!-- TAB 1: Animation Player -->
           <mat-tab label="Animation Player">
             <div class="tab-pane-content">
@@ -101,7 +141,7 @@ interface SandboxBg {
 
                 <div class="setting-item">
                   <span class="setting-label">Scale: {{ animScale() }}x</span>
-                  <mat-slider min="1" max="8" step="1" class="custom-slider">
+                  <mat-slider min="1" max="12" step="1" class="custom-slider">
                     <input matSliderThumb [ngModel]="animScale()" (ngModelChange)="animScale.set($event)" />
                   </mat-slider>
                 </div>
@@ -170,7 +210,7 @@ interface SandboxBg {
 
                 <div class="setting-item">
                   <span class="setting-label">Stage Scale: {{ stageScale() }}x</span>
-                  <mat-slider min="2" max="6" step="1" class="custom-slider">
+                  <mat-slider min="2" max="8" step="1" class="custom-slider">
                     <input matSliderThumb [ngModel]="stageScale()" (ngModelChange)="stageScale.set($event)" />
                   </mat-slider>
                 </div>
@@ -206,13 +246,32 @@ interface SandboxBg {
       border: 1px solid var(--sys-outline-variant);
       padding: 12px 16px;
       gap: 8px;
-      transition: all 0.25s ease;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       max-height: 100%;
       overflow: hidden;
 
       &.collapsed {
         padding: 10px 16px;
         gap: 0;
+      }
+
+      &.maximized {
+        position: fixed;
+        top: 76px;
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        height: calc(100vh - 92px) !important;
+        max-height: calc(100vh - 92px) !important;
+        z-index: 1000;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+        background: var(--sys-surface-container);
+        border: 1.5px solid var(--sys-primary);
+
+        .canvas-display-wrapper {
+          min-height: 380px;
+          height: calc(100vh - 270px);
+        }
       }
     }
 
@@ -227,7 +286,7 @@ interface SandboxBg {
     .header-title-group {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
 
     .header-icon {
@@ -243,10 +302,30 @@ interface SandboxBg {
       font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
+    .view-mode-badge {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--sys-primary);
+      background: rgba(0, 188, 212, 0.15);
+      border: 1px solid rgba(0, 188, 212, 0.35);
+      padding: 2px 8px;
+      border-radius: 8px;
+      letter-spacing: 0.5px;
+    }
+
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+    }
+
+    .mode-action-btn {
+      color: var(--sys-on-surface);
+
+      .material-symbols-outlined {
+        font-size: 20px;
+      }
     }
 
     .export-img-btn {
@@ -273,6 +352,7 @@ interface SandboxBg {
       flex-direction: column;
       gap: 8px;
       padding-top: 8px;
+      height: 100%;
     }
 
     .settings-bar {
@@ -386,6 +466,7 @@ interface SandboxBg {
       padding: 12px;
       overflow: auto;
       box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+      flex: 1;
     }
 
     .anim-render-canvas {
@@ -459,7 +540,10 @@ interface SandboxBg {
 export class SpriteSandboxComponent implements AfterViewInit, OnDestroy {
   spriteService = inject(SpriteService);
 
-  isCollapsed = signal<boolean>(false);
+  viewMode = signal<SandboxViewMode>('standard');
+  isCollapsed = computed(() => this.viewMode() === 'collapsed');
+  isMaximized = computed(() => this.viewMode() === 'maximized');
+
   activeTab = signal<number>(0);
 
   // Animation player state
@@ -480,8 +564,8 @@ export class SpriteSandboxComponent implements AfterViewInit, OnDestroy {
 
   // Stage state
   stageScale = signal<number>(3);
-  stageGridCols = 20;
-  stageGridRows = 10;
+  stageGridCols = 24;
+  stageGridRows = 12;
   stageGrid: number[][] = []; // Stores spriteId placed on (row, col)
   isStageDrawing = false;
 
@@ -524,14 +608,51 @@ export class SpriteSandboxComponent implements AfterViewInit, OnDestroy {
     if (this.animTimer) clearInterval(this.animTimer);
   }
 
-  toggleCollapse() {
-    this.isCollapsed.set(!this.isCollapsed());
-    if (!this.isCollapsed()) {
+  @HostListener('window:keydown.escape')
+  onEscapeKey() {
+    if (this.isMaximized()) {
+      this.setViewMode('standard');
+    }
+  }
+
+  setViewMode(mode: SandboxViewMode) {
+    this.viewMode.set(mode);
+    if (mode !== 'collapsed') {
       setTimeout(() => {
         this.renderAnimFrame();
         this.renderStage();
-      }, 0);
+      }, 50);
     }
+  }
+
+  toggleCollapse() {
+    if (this.isCollapsed()) {
+      this.setViewMode('standard');
+    } else {
+      this.setViewMode('collapsed');
+    }
+  }
+
+  toggleMaximize() {
+    if (this.isMaximized()) {
+      this.setViewMode('standard');
+    } else {
+      this.setViewMode('maximized');
+    }
+  }
+
+  onHeaderClick() {
+    if (this.isCollapsed()) {
+      this.setViewMode('standard');
+    }
+  }
+
+  onTabChange(index: number) {
+    this.activeTab.set(index);
+    setTimeout(() => {
+      if (index === 0) this.renderAnimFrame();
+      else if (index === 1) this.renderStage();
+    }, 50);
   }
 
   frameList = () => {
@@ -757,5 +878,6 @@ export class SpriteSandboxComponent implements AfterViewInit, OnDestroy {
     a.href = url;
     a.download = filename;
     a.click();
+    URL.revokeObjectURL(url);
   }
 }
