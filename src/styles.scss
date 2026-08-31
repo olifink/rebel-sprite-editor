@@ -1,0 +1,190 @@
+/* Google Fonts: Plus Jakarta Sans (UI), Fira Code (Mono), Material Symbols Outlined */
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+
+/* Prebuilt Angular Material Core Theme */
+@import '@angular/material/prebuilt-themes/azure-blue.css';
+
+:root {
+  /* Material Design 3 Expressive Dark Palette (Default) */
+  --sys-primary: #00bcd4;
+  --sys-on-primary: #00363d;
+  --sys-primary-container: #004f58;
+  --sys-on-primary-container: #97f0ff;
+
+  --sys-secondary: #b1cbd0;
+  --sys-on-secondary: #1c3438;
+  --sys-secondary-container: #334b4f;
+  --sys-on-secondary-container: #cde7ec;
+
+  --sys-tertiary: #bac6ea;
+  --sys-on-tertiary: #24304d;
+
+  --sys-accent: #ff4081;
+  --sys-on-accent: #ffffff;
+
+  --sys-background: #0f141c;
+  --sys-on-background: #dee3ea;
+
+  --sys-surface: #0f141c;
+  --sys-on-surface: #dee3ea;
+  --sys-surface-variant: #3f484a;
+  --sys-on-surface-variant: #bfc8ca;
+
+  --sys-surface-container-lowest: #0a0e14;
+  --sys-surface-container-low: #171c24;
+  --sys-surface-container: #1b212b;
+  --sys-surface-container-high: #252b37;
+  --sys-surface-container-highest: #303744;
+
+  --sys-outline: #899294;
+  --sys-outline-variant: #2d3542;
+}
+
+body.light-theme {
+  --sys-primary: #006875;
+  --sys-on-primary: #ffffff;
+  --sys-primary-container: #97f0ff;
+  --sys-on-primary-container: #001f24;
+
+  --sys-secondary: #4a6267;
+  --sys-on-secondary: #ffffff;
+  --sys-secondary-container: #cde7ec;
+  --sys-on-secondary-container: #051f23;
+
+  --sys-tertiary: #49587a;
+  --sys-on-tertiary: #ffffff;
+
+  --sys-accent: #d81b60;
+  --sys-on-accent: #ffffff;
+
+  --sys-background: #f5fafd;
+  --sys-on-background: #171c1e;
+
+  --sys-surface: #f5fafd;
+  --sys-on-surface: #171c1e;
+  --sys-surface-variant: #dbe4e6;
+  --sys-on-surface-variant: #3f484a;
+
+  --sys-surface-container-lowest: #ffffff;
+  --sys-surface-container-low: #eff5f8;
+  --sys-surface-container: #e9f0f3;
+  --sys-surface-container-high: #e3eaed;
+  --sys-surface-container-highest: #dde4e7;
+
+  --sys-outline: #6f797a;
+  --sys-outline-variant: #bfc8ca;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--sys-background);
+  color: var(--sys-on-background);
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Material Symbols Default */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Button Icon & Text Baseline Alignment Fix */
+.mat-mdc-button-base {
+  .mdc-button__label {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    vertical-align: middle !important;
+  }
+
+  .material-symbols-outlined {
+    font-size: 20px !important;
+    width: 20px !important;
+    height: 20px !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    vertical-align: middle !important;
+  }
+}
+
+.mat-mdc-icon-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  .material-symbols-outlined {
+    font-size: 22px !important;
+    width: 22px !important;
+    height: 22px !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
+/* Material 3 Card style */
+.m3-card {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--sys-surface-container-low);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--sys-surface-container-highest);
+  border-radius: 4px;
+
+  &:hover {
+    background: var(--sys-primary);
+  }
+}
+
+/* Dialog Overlay Styling */
+.cdk-overlay-backdrop.cdk-overlay-backdrop-showing {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.m3-dialog-panel .mat-mdc-dialog-container .mdc-dialog__surface {
+  border-radius: 24px !important;
+  background: var(--sys-surface-container) !important;
+  padding: 0 !important;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.4) !important;
+}
+
+/* Pixel art rendering class */
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}

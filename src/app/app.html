@@ -1,0 +1,32 @@
+<div class="app-layout" [class.dark-theme]="isDarkMode()" [class.light-theme]="!isDarkMode()">
+  <app-header
+    (openExport)="openExportDialog()"
+    (toggleTheme)="toggleTheme()"
+    (fileLoaded)="onFileLoaded($event)"
+  ></app-header>
+
+  <main class="main-content">
+    <div class="left-pane">
+      <app-sprite-list></app-sprite-list>
+    </div>
+
+    <div class="right-pane">
+      <div class="editor-section">
+        <app-pixel-editor></app-pixel-editor>
+      </div>
+
+      <div class="sandbox-section">
+        <app-sprite-sandbox></app-sprite-sandbox>
+      </div>
+    </div>
+  </main>
+
+  <!-- Drag and drop full screen overlay -->
+  <div *ngIf="isDraggingFile()" class="drag-drop-overlay">
+    <div class="drop-card">
+      <span class="material-symbols-outlined drop-icon">cloud_upload</span>
+      <h3>Drop .SPR Binary File Here</h3>
+      <p>Load raw Rebel sprite bank binary directly into Rebel Sprite Editor</p>
+    </div>
+  </div>
+</div>
