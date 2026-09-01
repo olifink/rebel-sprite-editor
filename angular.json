@@ -34,6 +34,7 @@
           },
           "configurations": {
             "production": {
+              "baseHref": "/rebel-sprite-editor/",
               "budgets": [
                 {
                   "type": "initial",
