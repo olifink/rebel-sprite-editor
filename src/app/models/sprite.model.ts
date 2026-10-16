@@ -1,6 +1,6 @@
 /**
  * Sprite Bank & Editor Data Models
- * Specifications according to SPRITE-BANK.md
+ * Specifications according to rebel-specs/11-SPRITE-BANK.md
  */
 
 export interface PaletteColor {
@@ -60,8 +60,13 @@ export interface SpriteBankPreset {
   }[];
 }
 
+export const BANK_HEADER_SIZE = 8; // 'S' (1), 'P' (1), version=1 (1), reserved=0 (1), entry_count (4 LE)
+export const BANK_HEADER_MAGIC = [0x53, 0x50]; // 'S', 'P'
+export const BANK_HEADER_VERSION = 1;
+export const PALETTE_OFFSET = 8; // BANK_HEADER_SIZE
 export const PALETTE_ENTRIES = 16;
 export const PALETTE_SIZE_BYTES = 64; // 16 * 4 bytes (32-bit 0xRRGGBB each)
+export const ENTRY_LIST_OFFSET = 72; // BANK_HEADER_SIZE + PALETTE_SIZE_BYTES (8 + 64)
 export const ENTRY_HEADER_SIZE = 4; // width (1), height (1), flags (1), reserved (1)
 export const TAG_HEADER_MAGIC = [0x52, 0x41, 0x53, 0x50, 0x52, 0x54]; // 'R','A','S','P','R','T'
 

@@ -147,19 +147,19 @@ import { SpriteService } from '../../services/sprite.service';
               <div class="card-details">
                 <h3>Rebel SPRT Asset File (.SPR)</h3>
                 <p>
-                  Conforms strictly to <code>SPRITE-BANK.md</code>: 6-byte <code>'RASPRT'</code> magic tag header + 64-byte 16-color 0xRRGGBB Palette + {{ spriteService.totalSprites() }} Entry Headers + Contiguous 4bpp packed pixel blocks.
+                  Conforms strictly to <code>11-SPRITE-BANK.md</code>: 6-byte <code>'RASPRT'</code> tag header + 8-byte bank header (<code>'SP'</code>, v1, entry count) + 64-byte 16-color 0xRRGGBB Palette (offset 8) + {{ spriteService.totalSprites() }} Entry Headers (offset 72) + Contiguous 4bpp packed pixel blocks (offset {{ 72 + spriteService.totalSprites() * 4 }}).
                 </p>
                 <div class="specs-grid">
                   <div class="spec-item">
-                    <span class="spec-label">Tag Header:</span>
-                    <span class="spec-val">6 Bytes ('RASPRT')</span>
+                    <span class="spec-label">Tag & Bank Header:</span>
+                    <span class="spec-val">6B ('RASPRT') + 8B ('SP' v1)</span>
                   </div>
                   <div class="spec-item">
-                    <span class="spec-label">Palette:</span>
+                    <span class="spec-label">Palette (Offset 8):</span>
                     <span class="spec-val">64 Bytes (16 x 0xRRGGBB)</span>
                   </div>
                   <div class="spec-item">
-                    <span class="spec-label">Headers:</span>
+                    <span class="spec-label">Headers (Offset 72):</span>
                     <span class="spec-val">{{ spriteService.totalSprites() * 4 }} Bytes ({{ spriteService.totalSprites() }} entries)</span>
                   </div>
                   <div class="spec-item">

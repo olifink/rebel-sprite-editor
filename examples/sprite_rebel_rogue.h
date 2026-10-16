@@ -16,7 +16,7 @@ typedef struct {
 
 typedef struct {
     const char* name;
-    uint16_t entry_count;
+    uint32_t entry_count;
     const uint32_t* palette;
     const TSpriteEntry* entries;
     const uint8_t* pixel_data;

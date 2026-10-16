@@ -4,7 +4,11 @@
 
 HEX
 
-\ 16-Color Palette (0xRRGGBB)
+\ 8-Byte Bank Header (Offset 0: 'S', 'P', version 1, reserved 0, entry count cell)
+CREATE REBEL-ROGUE-HEADER
+  53 C, 50 C, 1 C, 0 C, 10 ,
+
+\ 16-Color Palette (Offset 8: 0xRRGGBB)
 CREATE REBEL-ROGUE-PALETTE
   1A1C2C ,  \ [0] #1a1c2c
   5D275D ,  \ [1] #5d275d
@@ -23,7 +27,7 @@ CREATE REBEL-ROGUE-PALETTE
   566C86 ,  \ [14] #566c86
   333C57 ,  \ [15] #333c57
 
-\ Sprite Metadata Table: width height flags reserved
+\ Sprite Metadata Table (Offset 72: width height flags reserved)
 CREATE REBEL-ROGUE-ENTRIES
   10 C, 10 C, 0 C, 0 C,  \ #0 hero_idle_0
   10 C, 10 C, 0 C, 0 C,  \ #1 hero_idle_1

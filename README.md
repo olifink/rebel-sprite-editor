@@ -71,21 +71,27 @@ In a system operating directly on bare metal (across **Rebel-Sim** TypeScript si
 
 ## 📐 Sprite Bank Format & Memory Layout
 
-According to [`SPRITE-BANK.md`](SPRITE-BANK.md), every saved `.SPR` file starts with the standard 6-byte `'R','A','S','P','R','T'` header, followed by the bank payload.
+According to [`SPRITE-BANK.md`](SPRITE-BANK.md) (`rebel-specs/11-SPRITE-BANK.md`), every saved `.SPR` file starts with the standard 6-byte `'R','A','S','P','R','T'` tag header, followed by the bank payload (which begins with an 8-byte `'S','P'` bank header).
 
 ```
 +-------------------------------------------------------------------+
-| Byte 0..5: 'R', 'A', 'S', 'P', 'R', 'T' (Asset Tag Header)        |
+| File Byte 0..5: 'R', 'A', 'S', 'P', 'R', 'T' (Asset Tag Header)   |
 +-------------------------------------------------------------------+
-| Offset 0..63: 16 x 0xRRGGBB Palette Entries (4 bytes each)         |
+| Bank Offset 0..7: 8-Byte Sprite Bank Header                       |
+|   Byte 0..1: 'S', 'P' (0x53, 0x50)                                |
+|   Byte 2:    version (1)                                          |
+|   Byte 3:    reserved (0x00)                                      |
+|   Byte 4..7: entry count N (little-endian 32-bit cell)            |
 +-------------------------------------------------------------------+
-| Offset 64..(64 + 4*N - 1): N x Entry Headers (4 bytes each)       |
+| Bank Offset 8..71: 16 x 0xRRGGBB Palette Entries (4 bytes each)   |
++-------------------------------------------------------------------+
+| Bank Offset 72..(72 + 4*N - 1): N x Entry Headers (4 bytes each)  |
 |   Byte 0: width in pixels (multiple of 8)                         |
 |   Byte 1: height in pixels (multiple of 8)                        |
 |   Byte 2: attribute flags (bit 0 = H-FLIP, bit 1 = V-FLIP)        |
 |   Byte 3: reserved (0x00)                                         |
 +-------------------------------------------------------------------+
-| Offset (64 + 4*N)..: Contiguous 4bpp Pixel Data Blocks            |
+| Bank Offset (72 + 4*N)..: Contiguous 4bpp Pixel Data Blocks       |
 |   Entry size = (width / 2) * height bytes                         |
 |   One byte encodes two horizontal pixels (High = Left, Low = Right)|
 +-------------------------------------------------------------------+
@@ -104,7 +110,7 @@ Byte 2:  [ Pixel 4 (High Nibble: 0xF) | Pixel 5 (Low Nibble: 0xF) ]  -> 0xFF
 ### Offset Calculation Formula
 No offset table is stored in the bank. The pixel offset of entry $n$ is computed dynamically:
 
-$$\text{offset}[n] = 64 + 4N + \sum_{i < n} \left(\frac{\text{width}[i]}{2} \times \text{height}[i]\right)$$
+$$\text{offset}[n] = 8 + 64 + 4N + \sum_{i < n} \left(\frac{\text{width}[i]}{2} \times \text{height}[i]\right)$$
 
 ---
 

@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { SpriteService } from './sprite.service';
-import { TAG_HEADER_MAGIC } from '../models/sprite.model';
+import {
+  TAG_HEADER_MAGIC,
+  BANK_HEADER_MAGIC,
+  BANK_HEADER_VERSION,
+  PALETTE_OFFSET,
+  ENTRY_LIST_OFFSET
+} from '../models/sprite.model';
 
 describe('SpriteService', () => {
   let service: SpriteService;
@@ -122,7 +128,7 @@ describe('SpriteService', () => {
     expect(resized.pixelData.length).toBe((32 / 2) * 8); // 128 bytes
   });
 
-  it('should correctly export and import binary .SPR files matching SPRITE-BANK.md specification', async () => {
+  it('should correctly export and import binary .SPR files matching 11-SPRITE-BANK.md specification', async () => {
     // Set custom pixel data
     service.setPixel(0, 1, 1, 12);
     service.setPixel(0, 2, 2, 7);
@@ -132,13 +138,30 @@ describe('SpriteService', () => {
     const arrayBuffer = await blob.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
 
-    // Verify 6-byte magic header 'RASPRT'
+    // Verify 6-byte file tag header 'RASPRT'
     expect(bytes[0]).toBe(TAG_HEADER_MAGIC[0]); // 'R'
     expect(bytes[1]).toBe(TAG_HEADER_MAGIC[1]); // 'A'
     expect(bytes[2]).toBe(TAG_HEADER_MAGIC[2]); // 'S'
     expect(bytes[3]).toBe(TAG_HEADER_MAGIC[3]); // 'P'
     expect(bytes[4]).toBe(TAG_HEADER_MAGIC[4]); // 'R'
     expect(bytes[5]).toBe(TAG_HEADER_MAGIC[5]); // 'T'
+
+    // Verify 8-byte sprite bank header at bank offset 0..7 (file bytes 6..13)
+    const payload = bytes.subarray(6);
+    const expectedCount = service.sprites().length;
+    expect(payload[0]).toBe(BANK_HEADER_MAGIC[0]); // 'S'
+    expect(payload[1]).toBe(BANK_HEADER_MAGIC[1]); // 'P'
+    expect(payload[2]).toBe(BANK_HEADER_VERSION);   // 1
+    expect(payload[3]).toBe(0);                     // reserved 0
+    const countLe32 =
+      (payload[4] | (payload[5] << 8) | (payload[6] << 16) | (payload[7] << 24)) >>> 0;
+    expect(countLe32).toBe(expectedCount);
+
+    // Verify palette starts at bank offset 8 and entry headers at bank offset 72
+    expect(PALETTE_OFFSET).toBe(8);
+    expect(ENTRY_LIST_OFFSET).toBe(72);
+    expect(payload[ENTRY_LIST_OFFSET]).toBe(service.sprites()[0].width);
+    expect(payload[ENTRY_LIST_OFFSET + 1]).toBe(service.sprites()[0].height);
 
     // Verify roundtrip parsing in a new service instance
     const freshService = new SpriteService();
@@ -156,6 +179,7 @@ describe('SpriteService', () => {
     expect(tsCode).toContain('export const TEST_BANK_PALETTE');
     expect(tsCode).toContain('export const TEST_BANK_PIXEL_DATA');
     expect(tsCode).toContain('export function getTestBankPixel');
+    expect(tsCode).toContain('offset: 136'); // 72 + 16 * 4 = 136 for first entry
 
     const cppCode = service.exportCppSource('test_bank');
     expect(cppCode.h).toContain('TSpriteBank SpriteBank_TestBank;');
@@ -163,7 +187,9 @@ describe('SpriteService', () => {
     expect(cppCode.cpp).toContain('static const TSpriteEntry sprite_entries');
 
     const forthCode = service.exportForthSource('test_bank');
+    expect(forthCode).toContain('CREATE TEST-BANK-HEADER');
     expect(forthCode).toContain('CREATE TEST-BANK-PALETTE');
     expect(forthCode).toContain('CREATE TEST-BANK-ENTRIES');
   });
 });
+

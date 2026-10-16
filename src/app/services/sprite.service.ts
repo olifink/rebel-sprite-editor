@@ -3,8 +3,13 @@ import {
   SpriteEntry,
   PaletteColor,
   PALETTE_PRESETS,
+  BANK_HEADER_SIZE,
+  BANK_HEADER_MAGIC,
+  BANK_HEADER_VERSION,
+  PALETTE_OFFSET,
   PALETTE_ENTRIES,
   PALETTE_SIZE_BYTES,
+  ENTRY_LIST_OFFSET,
   ENTRY_HEADER_SIZE,
   TAG_HEADER_MAGIC,
   hexToPaletteColor,
@@ -55,7 +60,7 @@ export class SpriteService {
 
   totalMemoryBytes = computed(() => {
     const list = this.sprites();
-    let total = PALETTE_SIZE_BYTES + ENTRY_HEADER_SIZE * list.length;
+    let total = BANK_HEADER_SIZE + PALETTE_SIZE_BYTES + ENTRY_HEADER_SIZE * list.length;
     for (const s of list) {
       total += s.pixelData.length;
     }
@@ -739,12 +744,21 @@ export class SpriteService {
         return false;
       }
 
+      // Check for 8-byte bank header: 'S' (0x53), 'P' (0x50), version (1), reserved (0), entry_count (LE32)
+      const hasBankHeader =
+        payload.length >= ENTRY_LIST_OFFSET &&
+        payload[0] === BANK_HEADER_MAGIC[0] &&
+        payload[1] === BANK_HEADER_MAGIC[1];
+
+      const paletteBase = hasBankHeader ? PALETTE_OFFSET : 0;
+      const entryListBase = hasBankHeader ? ENTRY_LIST_OFFSET : PALETTE_SIZE_BYTES;
+
       this.pushHistory();
 
-      // Read 16 palette entries (64 bytes, 4 bytes each 0xRRGGBB Little-Endian [B, G, R, 0x00])
+      // Read 16 palette entries (64 bytes at paletteBase, 4 bytes each 0xRRGGBB Little-Endian [B, G, R, 0x00])
       const newPalette: PaletteColor[] = [];
       for (let i = 0; i < PALETTE_ENTRIES; i++) {
-        const offset = i * 4;
+        const offset = paletteBase + i * 4;
         const b = payload[offset];
         const g = payload[offset + 1];
         const r = payload[offset + 2];
@@ -753,53 +767,58 @@ export class SpriteService {
       }
       this.palette.set(newPalette);
 
-      // Determine entry count N
-      // Total payload size = 64 + 4*N + sum((w_i/2)*h_i)
       const payloadSize = payload.length;
       let entryCount = 0;
-      let currentHeaderOffset = PALETTE_SIZE_BYTES;
 
-      // First pass: find candidate N that matches exact payload size
-      for (let k = 1; k <= 1024; k++) {
-        const headerEnd = PALETTE_SIZE_BYTES + k * ENTRY_HEADER_SIZE;
-        if (headerEnd > payloadSize) break;
+      if (hasBankHeader) {
+        entryCount =
+          (payload[4] |
+            (payload[5] << 8) |
+            (payload[6] << 16) |
+            (payload[7] << 24)) >>>
+          0;
+      } else {
+        // Legacy fallback: determine entry count N when 8-byte header is absent
+        for (let k = 1; k <= 1024; k++) {
+          const headerEnd = entryListBase + k * ENTRY_HEADER_SIZE;
+          if (headerEnd > payloadSize) break;
 
-        let totalPixelBytes = 0;
-        let validHeaders = true;
-        for (let j = 0; j < k; j++) {
-          const hOff = PALETTE_SIZE_BYTES + j * ENTRY_HEADER_SIZE;
-          const w = payload[hOff];
-          const h = payload[hOff + 1];
-          if (w === 0 || h === 0 || w % 8 !== 0 || h % 8 !== 0) {
-            validHeaders = false;
-            break;
+          let totalPixelBytes = 0;
+          let validHeaders = true;
+          for (let j = 0; j < k; j++) {
+            const hOff = entryListBase + j * ENTRY_HEADER_SIZE;
+            const w = payload[hOff];
+            const h = payload[hOff + 1];
+            if (w === 0 || h === 0 || w % 8 !== 0 || h % 8 !== 0) {
+              validHeaders = false;
+              break;
+            }
+            totalPixelBytes += (w / 2) * h;
           }
-          totalPixelBytes += (w / 2) * h;
-        }
 
-        if (validHeaders && headerEnd + totalPixelBytes === payloadSize) {
-          entryCount = k;
-          break;
-        }
-      }
-
-      // Fallback: If exact match not found (e.g. padded file), parse sequentially while valid
-      if (entryCount === 0) {
-        let k = 0;
-        let runningPixelSum = 0;
-        while (PALETTE_SIZE_BYTES + (k + 1) * ENTRY_HEADER_SIZE <= payloadSize) {
-          const hOff = PALETTE_SIZE_BYTES + k * ENTRY_HEADER_SIZE;
-          const w = payload[hOff];
-          const h = payload[hOff + 1];
-          if (w === 0 || h === 0 || w % 8 !== 0 || h % 8 !== 0) break;
-          runningPixelSum += (w / 2) * h;
-          k++;
-          if (PALETTE_SIZE_BYTES + k * ENTRY_HEADER_SIZE + runningPixelSum >= payloadSize) {
+          if (validHeaders && headerEnd + totalPixelBytes === payloadSize) {
             entryCount = k;
             break;
           }
         }
-        if (entryCount === 0) entryCount = k;
+
+        if (entryCount === 0) {
+          let k = 0;
+          let runningPixelSum = 0;
+          while (entryListBase + (k + 1) * ENTRY_HEADER_SIZE <= payloadSize) {
+            const hOff = entryListBase + k * ENTRY_HEADER_SIZE;
+            const w = payload[hOff];
+            const h = payload[hOff + 1];
+            if (w === 0 || h === 0 || w % 8 !== 0 || h % 8 !== 0) break;
+            runningPixelSum += (w / 2) * h;
+            k++;
+            if (entryListBase + k * ENTRY_HEADER_SIZE + runningPixelSum >= payloadSize) {
+              entryCount = k;
+              break;
+            }
+          }
+          if (entryCount === 0) entryCount = k;
+        }
       }
 
       if (entryCount === 0) {
@@ -807,10 +826,10 @@ export class SpriteService {
         entryCount = 1;
       }
 
-      // Parse headers
+      // Parse headers at offset 72 (or 64 for legacy)
       const entries: { width: number; height: number; flags: number }[] = [];
       for (let i = 0; i < entryCount; i++) {
-        const hOff = PALETTE_SIZE_BYTES + i * ENTRY_HEADER_SIZE;
+        const hOff = entryListBase + i * ENTRY_HEADER_SIZE;
         let w = payload[hOff] || 16;
         let h = payload[hOff + 1] || 16;
         if (w % 8 !== 0) w = Math.max(8, Math.round(w / 8) * 8);
@@ -819,8 +838,8 @@ export class SpriteService {
         entries.push({ width: w, height: h, flags });
       }
 
-      // Extract pixel data
-      const pixelDataStart = PALETTE_SIZE_BYTES + entryCount * ENTRY_HEADER_SIZE;
+      // Extract pixel data starting at 72 + 4 * entryCount
+      const pixelDataStart = entryListBase + entryCount * ENTRY_HEADER_SIZE;
       let currentPixelOffset = pixelDataStart;
       const parsedSprites: SpriteEntry[] = [];
 
@@ -920,27 +939,40 @@ export class SpriteService {
   exportSprBinaryBlob(includeMagicHeader: boolean = true): Blob {
     const spritesList = this.sprites();
     const pal = this.palette();
+    const entryCount = spritesList.length;
 
     const magicSize = includeMagicHeader ? 6 : 0;
+    const bankHeaderSize = BANK_HEADER_SIZE; // 8
     const paletteSize = PALETTE_SIZE_BYTES; // 64
-    const headerListSize = spritesList.length * ENTRY_HEADER_SIZE;
+    const headerListSize = entryCount * ENTRY_HEADER_SIZE;
     let pixelDataSize = 0;
     for (const s of spritesList) {
       pixelDataSize += s.pixelData.length;
     }
 
-    const totalSize = magicSize + paletteSize + headerListSize + pixelDataSize;
+    const totalSize = magicSize + bankHeaderSize + paletteSize + headerListSize + pixelDataSize;
     const buffer = new Uint8Array(totalSize);
 
     let offset = 0;
 
-    // 1. Optional Magic Header 'RASPRT'
+    // 1. Optional 6-byte File Tag Header 'RASPRT'
     if (includeMagicHeader) {
       buffer.set(TAG_HEADER_MAGIC, offset);
       offset += 6;
     }
 
-    // 2. Palette (64 bytes: 16 entries x 4 bytes Little-Endian [B, G, R, 0x00])
+    // 2. 8-byte Bank Header at Bank Offset 0: 'S', 'P', version 1, reserved 0, entry count (LE 32-bit cell)
+    buffer[offset + 0] = BANK_HEADER_MAGIC[0]; // 'S' (0x53)
+    buffer[offset + 1] = BANK_HEADER_MAGIC[1]; // 'P' (0x50)
+    buffer[offset + 2] = BANK_HEADER_VERSION;   // version 1
+    buffer[offset + 3] = 0x00;                 // reserved 0
+    buffer[offset + 4] = entryCount & 0xff;
+    buffer[offset + 5] = (entryCount >>> 8) & 0xff;
+    buffer[offset + 6] = (entryCount >>> 16) & 0xff;
+    buffer[offset + 7] = (entryCount >>> 24) & 0xff;
+    offset += BANK_HEADER_SIZE;
+
+    // 3. Palette at Bank Offset 8 (64 bytes: 16 entries x 4 bytes Little-Endian [B, G, R, 0x00])
     for (let i = 0; i < PALETTE_ENTRIES; i++) {
       const color = pal[i] || hexToPaletteColor('#000000', i);
       buffer[offset + 0] = color.b & 0xff;
@@ -950,8 +982,8 @@ export class SpriteService {
       offset += 4;
     }
 
-    // 3. Entry List Headers (4 bytes each: [width, height, flags, reserved])
-    for (let i = 0; i < spritesList.length; i++) {
+    // 4. Entry List Headers at Bank Offset 72 (4 bytes each: [width, height, flags, reserved])
+    for (let i = 0; i < entryCount; i++) {
       const s = spritesList[i];
       let flags = 0;
       if (s.hFlip) flags |= 1;
@@ -964,8 +996,8 @@ export class SpriteService {
       offset += 4;
     }
 
-    // 4. Contiguous Pixel Data
-    for (let i = 0; i < spritesList.length; i++) {
+    // 5. Contiguous Pixel Data at Bank Offset 72 + 4 * entryCount
+    for (let i = 0; i < entryCount; i++) {
       const s = spritesList[i];
       buffer.set(s.pixelData, offset);
       offset += s.pixelData.length;
@@ -987,7 +1019,7 @@ export class SpriteService {
     lines.push(` * Rebel Sprite Bank: ${slug}`);
     lines.push(` * Generated by Rebel Sprite Editor`);
     lines.push(` *`);
-    lines.push(` * Format: 4bpp, 16-entry 0xRRGGBB Palette, Contiguous 4bpp Pixel Data.`);
+    lines.push(` * Format: 8-byte 'SP' v1 Header, 16-entry 0xRRGGBB Palette (offset 8), Entry Headers (offset 72), Contiguous 4bpp Pixel Data.`);
     lines.push(` * Entry Count: ${spritesList.length} sprite(s) / tile(s)`);
     lines.push(` */`);
     lines.push(``);
@@ -996,7 +1028,7 @@ export class SpriteService {
     lines.push(``);
 
     // 16 Palette entries
-    lines.push(`// 16-Entry 0xRRGGBB Color Palette (Index 0 is Transparent / Color-Key)`);
+    lines.push(`// 16-Entry 0xRRGGBB Color Palette at Bank Offset 8 (Index 0 is Transparent / Color-Key)`);
     lines.push(`export const ${constPrefix}_PALETTE: readonly number[] = [`);
     for (let i = 0; i < PALETTE_ENTRIES; i++) {
       const c = pal[i] || hexToPaletteColor('#000000', i);
@@ -1020,7 +1052,7 @@ export class SpriteService {
     lines.push(``);
     lines.push(`export const ${constPrefix}_ENTRIES: readonly SpriteEntryMetadata[] = [`);
 
-    let runningOffset = 64 + spritesList.length * 4;
+    let runningOffset = ENTRY_LIST_OFFSET + spritesList.length * ENTRY_HEADER_SIZE;
     for (let i = 0; i < spritesList.length; i++) {
       const s = spritesList[i];
       const byteLen = s.pixelData.length;
@@ -1056,7 +1088,7 @@ export class SpriteService {
     lines.push(`export function get${pascalName}Pixel(entryId: number, x: number, y: number): number {`);
     lines.push(`  const entry = ${constPrefix}_ENTRIES[entryId];`);
     lines.push(`  if (!entry || x < 0 || x >= entry.width || y < 0 || y >= entry.height) return 0;`);
-    lines.push(`  const start = entry.offset - (64 + ${constPrefix}_ENTRY_COUNT * 4);`);
+    lines.push(`  const start = entry.offset - (${ENTRY_LIST_OFFSET} + ${constPrefix}_ENTRY_COUNT * ${ENTRY_HEADER_SIZE});`);
     lines.push(`  const byteIdx = start + y * (entry.width / 2) + (x >> 1);`);
     lines.push(`  const byteVal = ${constPrefix}_PIXEL_DATA[byteIdx];`);
     lines.push(`  return (x % 2 === 0) ? ((byteVal >> 4) & 0x0F) : (byteVal & 0x0F);`);
@@ -1092,7 +1124,7 @@ export class SpriteService {
     hLines.push(``);
     hLines.push(`typedef struct {`);
     hLines.push(`    const char* name;`);
-    hLines.push(`    uint16_t entry_count;`);
+    hLines.push(`    uint32_t entry_count;`);
     hLines.push(`    const uint32_t* palette;`);
     hLines.push(`    const TSpriteEntry* entries;`);
     hLines.push(`    const uint8_t* pixel_data;`);
@@ -1182,7 +1214,11 @@ export class SpriteService {
     lines.push(``);
     lines.push(`HEX`);
     lines.push(``);
-    lines.push(`\\ 16-Color Palette (0xRRGGBB)`);
+    lines.push(`\\ 8-Byte Bank Header (Offset 0: 'S', 'P', version 1, reserved 0, entry count cell)`);
+    lines.push(`CREATE ${slug.toUpperCase()}-HEADER`);
+    lines.push(`  53 C, 50 C, 1 C, 0 C, ${spritesList.length.toString(16).toUpperCase()} ,`);
+    lines.push(``);
+    lines.push(`\\ 16-Color Palette (Offset 8: 0xRRGGBB)`);
     lines.push(`CREATE ${slug.toUpperCase()}-PALETTE`);
     for (let i = 0; i < PALETTE_ENTRIES; i++) {
       const c = pal[i] || hexToPaletteColor('#000000', i);
@@ -1190,7 +1226,7 @@ export class SpriteService {
     }
     lines.push(``);
 
-    lines.push(`\\ Sprite Metadata Table: width height flags reserved`);
+    lines.push(`\\ Sprite Metadata Table (Offset 72: width height flags reserved)`);
     lines.push(`CREATE ${slug.toUpperCase()}-ENTRIES`);
     for (let i = 0; i < spritesList.length; i++) {
       const s = spritesList[i];
